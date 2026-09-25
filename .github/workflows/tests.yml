@@ -22,39 +22,29 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.12"
+  COMPOSE_FILE: docker/toolshop.compose.yml
 
 jobs:
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: pip install ruff==0.15.11
       - run: ruff check .
       - run: ruff format --check .
 
-  tests:
-    name: ${{ matrix.name }} tests
+  api-tests:
+    name: API tests (public API)
     needs: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: API
-            marker: api
-            needs_browser: false
-          - name: UI
-            marker: ui or e2e
-            needs_browser: true
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -62,37 +52,91 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Install Chromium
-        if: matrix.needs_browser
-        run: python -m playwright install --with-deps chromium
-
-      - name: Run tests
+      - name: Run API tests
         env:
-          MARKER: ${{ inputs.smoke_only && format('({0}) and smoke', matrix.marker) || matrix.marker }}
-        run: >
-          pytest -m "$MARKER"
-          -n 2 --reruns 1 --reruns-delay 2
-          --alluredir=allure-results
+          MARKER: ${{ inputs.smoke_only && '(api) and smoke' || 'api' }}
+        run: pytest -m "$MARKER" -n 2 --reruns 1 --reruns-delay 2 --alluredir=allure-results
 
       - name: Upload Allure results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results-${{ matrix.name }}
+          name: allure-results-API
+          path: allure-results
+          retention-days: 7
+
+  ui-tests:
+    # The public site is behind bot protection that blocks browsers on GitHub-hosted
+    # runners, so UI tests run against a local copy of the app started in Docker.
+    name: UI tests (app in Docker)
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BASE_URL: http://localhost:4200
+      API_URL: http://localhost:8091
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start Toolshop in Docker
+        run: docker compose up -d --quiet-pull
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Create and seed the database
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose exec -T laravel-api php artisan migrate:fresh --seed --force; then
+              exit 0
+            fi
+            echo "Database not ready yet, retrying ($i/30)..."
+            sleep 5
+          done
+          exit 1
+
+      - name: Wait for API and UI
+        run: |
+          timeout 300 bash -c 'until curl -sf "$API_URL/products" > /dev/null; do sleep 5; done'
+          echo "API is up"
+          timeout 600 bash -c 'until curl -sf "$BASE_URL" > /dev/null; do sleep 5; done'
+          echo "UI is up"
+
+      - name: Run UI and E2E tests
+        env:
+          MARKER: ${{ inputs.smoke_only && '(ui or e2e) and smoke' || 'ui or e2e' }}
+        run: pytest -m "$MARKER" -n 2 --reruns 1 --reruns-delay 2 --alluredir=allure-results
+
+      - name: Upload Allure results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results-UI
           path: allure-results
           retention-days: 7
 
       - name: Upload Playwright traces and screenshots
-        if: failure() && matrix.needs_browser
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-traces
           path: test-results
           retention-days: 7
 
+      - name: Show app logs on failure
+        if: failure()
+        run: docker compose logs --tail=200
+
   report:
     name: Publish Allure report
-    needs: tests
+    needs: [api-tests, ui-tests]
     if: always() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
@@ -103,13 +147,13 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - name: Download all Allure results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: allure-results-*
           merge-multiple: true
           path: allure-results
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"

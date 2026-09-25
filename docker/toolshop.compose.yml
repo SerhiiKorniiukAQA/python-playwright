@@ -1,0 +1,43 @@
+# Local copy of the Toolshop app (UI + API + DB) from the official prebuilt images.
+# Used in CI for UI tests, because the public site sits behind bot protection
+# that blocks browsers running on GitHub-hosted runners.
+#
+#   docker compose -f docker/toolshop.compose.yml up -d
+#   docker compose -f docker/toolshop.compose.yml exec -T laravel-api php artisan migrate:fresh --seed --force
+#
+# UI:  http://localhost:4200
+# API: http://localhost:8091
+name: toolshop
+
+services:
+  laravel-api:
+    image: testsmith/practice-software-testing-sprint5-api
+    environment:
+      - PHP_OPCACHE_VALIDATE_TIMESTAMPS=1
+      - DB_PORT=3306
+      - DB_HOST=mariadb
+      - host=localhost
+      - DISABLE_LOGGING=true
+    depends_on:
+      - mariadb
+
+  web:
+    image: testsmith/practice-software-testing-web
+    ports:
+      - "8091:80"
+    depends_on:
+      - laravel-api
+
+  angular-ui:
+    image: testsmith/practice-software-testing-sprint5-ui
+    ports:
+      - "4200:4200"
+    command: bash -c "ng serve --host 0.0.0.0 --port 4200"
+
+  mariadb:
+    image: yobasystems/alpine-mariadb:10.6.11
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: user
+      MYSQL_PASSWORD: root
+      MYSQL_DATABASE: toolshop

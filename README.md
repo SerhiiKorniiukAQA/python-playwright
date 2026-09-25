@@ -27,6 +27,7 @@ api/                 API client: one wrapper per resource + pydantic response mo
 config/settings.py   URLs and credentials, overridable with environment variables
 pages/               Page objects (+ components/ for shared parts like the header)
 utils/               Test data factory
+docker/              Docker Compose file to run the Toolshop app locally / in CI
 tests/
   conftest.py        Shared fixtures: browser config, API clients, auth token
   api/               API tests: products, auth/registration, cart
@@ -81,7 +82,15 @@ Open a failed UI test's trace: `playwright show-trace test-results/<test>/trace.
 | `API_URL` | `https://api.practicesoftwaretesting.com` |
 | `CUSTOMER_EMAIL` / `CUSTOMER_PASSWORD` | public demo customer |
 
-To run against a local instance of the app (Docker), point `BASE_URL` and `API_URL` to it.
+### Running against a local copy of the app (Docker)
+
+```bash
+docker compose -f docker/toolshop.compose.yml up -d
+docker compose -f docker/toolshop.compose.yml exec -T laravel-api php artisan migrate:fresh --seed --force
+# wait ~1-2 min for the UI to compile, then:
+BASE_URL=http://localhost:4200 API_URL=http://localhost:8091 pytest
+```
+(PowerShell: `$env:BASE_URL="http://localhost:4200"; $env:API_URL="http://localhost:8091"; pytest`)
 
 ## CI pipeline
 
@@ -89,5 +98,9 @@ To run against a local instance of the app (Docker), point `BASE_URL` and `API_U
 and manually (with an optional *smoke only* switch):
 
 1. **Lint:** `ruff check` and `ruff format --check`
-2. **Tests:** API and UI suites run as parallel jobs, with one retry for flaky network issues
+2. **Tests:** two parallel jobs, with one retry for flaky network issues
+   - **API tests** run against the public API.
+   - **UI + E2E tests** run against the app started in Docker on the runner (`docker/toolshop.compose.yml`).
+     The public site is protected by a bot check that blocks browsers on GitHub-hosted runners;
+     a local environment is also closer to how UI tests run in real projects: isolated data, no dependence on a shared demo.
 3. **Report:** Allure results from both jobs are merged and published to GitHub Pages
