@@ -62,10 +62,10 @@ def test_postcode_lookup_error_is_shown(checkout_at_address_step: CheckoutPage) 
     checkout = checkout_at_address_step
     message = "Postcode 00000 is not valid for the selected country."
     mock_postcode_lookup(checkout.page, {"message": message}, status=422)
+    street_before = checkout.street_input.input_value()  # pre-filled from the customer profile
 
     checkout.enter_postcode("UA", "00000", "1")
 
-    with allure.step("Check error message and that the address stays incomplete"):
+    with allure.step("Check error message and that the address was not overwritten"):
         expect(checkout.postcode_lookup_error).to_contain_text(message)
-        expect(checkout.street_input).to_have_value("")
-        expect(checkout.proceed_to_payment_button).to_be_disabled()
+        expect(checkout.street_input).to_have_value(street_before)

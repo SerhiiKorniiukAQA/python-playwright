@@ -52,11 +52,12 @@ class CheckoutPage(BasePage):
 
     @allure.step("Sign in: continue as the logged-in user")
     def continue_as_logged_in_user(self) -> None:
+        # The greeting is rendered from GET /users/me - the same request that pre-fills
+        # the address form with the saved profile address when /checkout loads.
+        # Once it is visible, that pre-fill can no longer overwrite what we type.
         expect(self.signed_in_message).to_be_visible()
-        # Entering the address step loads the saved profile address (GET /users/me)
-        # and patches it into the form. Wait for it, or it could overwrite our input.
-        with self.page.expect_response(lambda r: r.url.endswith("/users/me")):
-            self.proceed_to_address_button.click()
+        self.proceed_to_address_button.click()
+        expect(self.postal_code_input).to_be_visible()
 
     @allure.step("Address: select country '{country_code}', postcode '{postal_code}', house '{house_number}'")
     def enter_postcode(self, country_code: str, postal_code: str, house_number: str) -> None:
@@ -74,7 +75,9 @@ class CheckoutPage(BasePage):
         The backend re-checks that city/state match the postcode when the order is
         placed, so the lookup result (not random text) is what must be submitted.
         """
-        with self.page.expect_response(lambda r: "/postcode-lookup" in r.url) as lookup:
+        with self.page.expect_response(
+            lambda r: "/postcode-lookup" in r.url and r.request.method == "GET"
+        ) as lookup:
             self.enter_postcode(country_code, postal_code, house_number)
         result = lookup.value.json()
         expect(self.street_input).to_have_value(result["street"])
