@@ -1,3 +1,5 @@
+import allure
+
 from pages.base_page import BasePage
 
 
@@ -15,8 +17,10 @@ class ProductPage(BasePage):
     def get_unit_price(self) -> float:
         return float(self.unit_price.inner_text().strip())
 
+    @allure.step("Set quantity to {quantity}")
     def set_quantity(self, quantity: int) -> None:
         self.quantity_input.fill(str(quantity))
 
+    @allure.step("Add product to cart")
     def add_to_cart(self) -> None:
         self.add_to_cart_button.click()

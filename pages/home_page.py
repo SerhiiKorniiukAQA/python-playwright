@@ -1,5 +1,6 @@
 from typing import Self
 
+import allure
 from playwright.sync_api import expect
 
 from pages.base_page import BasePage
@@ -37,21 +38,26 @@ class HomePage(BasePage):
     def _wait_for_state(self, state: str) -> None:
         expect(self.page.get_by_test_id(state)).to_be_attached()
 
+    @allure.step("Search for '{query}'")
     def search(self, query: str) -> None:
         self.search_input.fill(query)
         self.search_button.click()
         self._wait_for_state("search_completed")
 
+    @allure.step("Sort products by '{option}'")
     def sort_by(self, option: str) -> None:
         self.sort_select.select_option(option)
         self._wait_for_state("sorting_completed")
 
+    @allure.step("Read product names")
     def get_product_names(self) -> list[str]:
         return [name.strip() for name in self.product_names.all_inner_texts()]
 
+    @allure.step("Read product prices")
     def get_product_prices(self) -> list[float]:
         return [float(text.strip().lstrip("$")) for text in self.product_prices.all_inner_texts()]
 
+    @allure.step("Open product '{name}'")
     def open_product(self, name: str) -> ProductPage:
         self.product_names.filter(has_text=name).first.click()
         product_page = ProductPage(self.page)

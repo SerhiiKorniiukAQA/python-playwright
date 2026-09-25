@@ -178,6 +178,28 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Add history and CI info to the report
+        env:
+          REPORT_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Trend charts: take history from the previously published report (absent on the first run)
+          mkdir -p allure-results/history
+          for f in history.json history-trend.json duration-trend.json categories-trend.json retry-trend.json; do
+            curl -sf "$REPORT_URL/history/$f" -o "allure-results/history/$f" || true
+          done
+          # "Executors" widget: link from the report back to this CI run
+          cat > allure-results/executor.json <<EOF
+          {
+            "name": "GitHub Actions",
+            "type": "github",
+            "buildName": "Run #${{ github.run_number }}",
+            "buildOrder": ${{ github.run_number }},
+            "buildUrl": "$RUN_URL",
+            "reportUrl": "$REPORT_URL"
+          }
+          EOF
+
       - name: Generate report
         run: |
           npm install -g allure-commandline

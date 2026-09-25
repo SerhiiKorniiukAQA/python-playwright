@@ -8,16 +8,16 @@ class ProductsApi(BaseApi):
         params: dict[str, str | int] = {"page": page}
         if sort:
             params["sort"] = sort
-        return self._request.get("/products", params=params)
+        return self._send("GET", "/products", params=params)
 
     def get_product(self, product_id: str) -> APIResponse:
-        return self._request.get(f"/products/{product_id}")
+        return self._send("GET", f"/products/{product_id}")
 
     def search(self, query: str) -> APIResponse:
-        return self._request.get("/products/search", params={"q": query})
+        return self._send("GET", "/products/search", params={"q": query})
 
     def get_categories(self) -> APIResponse:
-        return self._request.get("/categories")
+        return self._send("GET", "/categories")
 
     def get_brands(self) -> APIResponse:
-        return self._request.get("/brands")
+        return self._send("GET", "/brands")

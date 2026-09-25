@@ -1,3 +1,4 @@
+import allure
 from playwright.sync_api import Page
 
 
@@ -11,8 +12,10 @@ class Header:
         self.cart_link = page.get_by_test_id("nav-cart")
         self.cart_quantity = page.get_by_test_id("cart-quantity")
 
+    @allure.step("Go to Sign in")
     def go_to_sign_in(self) -> None:
         self.sign_in_link.click()
 
+    @allure.step("Go to cart")
     def go_to_cart(self) -> None:
         self.cart_link.click()

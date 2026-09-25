@@ -22,9 +22,10 @@ def test_user_registered_via_api_can_log_in(page: Page, users_api: UsersApi) -> 
         response = users_api.register(user)
         assert response.status == 201, response.text()
 
-    with allure.step("Log in through the UI"):
-        LoginPage(page).open().login(user["email"], user["password"])
+    LoginPage(page).open().login(user["email"], user["password"])
 
     account = AccountPage(page)
-    expect(account.page_title).to_have_text("My account")
-    expect(account.header.user_menu).to_contain_text(f"{user['first_name']} {user['last_name']}")
+    full_name = f"{user['first_name']} {user['last_name']}"
+    with allure.step(f"Check that 'My account' is opened for '{full_name}'"):
+        expect(account.page_title).to_have_text("My account")
+        expect(account.header.user_menu).to_contain_text(full_name)
