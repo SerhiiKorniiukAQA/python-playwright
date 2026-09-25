@@ -63,7 +63,7 @@ Short version below; the reasoning is in **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 - **Stable locators and no sleeps:** `data-test` attributes, web-first assertions, app state markers,
   `expect_response`.
 - **Schema validation:** every API response is parsed into a pydantic model.
-- **Isolation:** unique data per test, parallel runs, a fresh Docker environment for UI in CI.
+- **Isolation:** unique data per test, parallel runs, a fresh Docker environment for every CI run.
 
 ## Running locally
 
@@ -114,9 +114,9 @@ BASE_URL=http://localhost:4200 API_URL=http://localhost:8091 pytest
 and manually (with an optional *smoke only* switch):
 
 1. **Lint:** `ruff check` and `ruff format --check`
-2. **Tests:** two parallel jobs, with one retry for flaky network issues
-   - **API tests** run against the public API.
-   - **UI + E2E tests** run against the app started in Docker on the runner (`docker/toolshop.compose.yml`).
-     The public site is protected by a bot check that blocks browsers on GitHub-hosted runners;
-     a local environment is also closer to how UI tests run in real projects: isolated data, no dependence on a shared demo.
+2. **Tests:** API and UI + E2E suites run as parallel jobs, with one retry for flaky network issues.
+   Both run against a fresh copy of the app started in Docker on the runner (`docker/toolshop.compose.yml`):
+   - the public site is protected by a bot check that blocks browsers on GitHub-hosted runners;
+   - the public demo accounts are shared with everyone, so someone else's failed logins can lock them (HTTP 423).
+   A freshly seeded environment per run gives isolated data and results that do not depend on other people.
 3. **Report:** Allure results from both jobs are merged and published to GitHub Pages

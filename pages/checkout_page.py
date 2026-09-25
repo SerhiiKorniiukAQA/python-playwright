@@ -44,7 +44,6 @@ class CheckoutPage(BasePage):
         self.payment_success_message = page.get_by_test_id("payment-success-message")
         self.payment_error_message = page.get_by_test_id("payment-error-message")
         self.order_confirmation = page.locator("#order-confirmation")
-        self.invoice_number = page.locator("#invoice-number")
 
     @allure.step("Cart: proceed to sign in")
     def proceed_to_sign_in(self) -> None:
@@ -111,5 +110,8 @@ class CheckoutPage(BasePage):
         self.finish_button.click()
         expect(self.payment_success_message).to_have_text("Payment was successful")
         self.finish_button.click()
-        expect(self.order_confirmation).to_be_visible()
-        return self.invoice_number.inner_text().strip()
+        # The message is rendered via [innerHTML]; Angular's sanitizer strips the id of the
+        # <span> around the number, so the number is taken from the text instead.
+        invoice_number = re.compile(r"INV-\d+")
+        expect(self.order_confirmation).to_contain_text(invoice_number)
+        return invoice_number.search(self.order_confirmation.inner_text()).group()

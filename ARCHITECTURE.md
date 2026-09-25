@@ -88,7 +88,7 @@ AuthN vs AuthZ are tested separately (`tests/api/test_auth.py` vs `test_authoriz
   No test depends on another test or on execution order, so the suite runs in parallel (`pytest-xdist`).
 - Shared seeded accounts are only **read** (login, profile). Destructive checks use ids that do not
   exist, so even a missing permission check could not delete real data.
-- In CI the UI suite runs against a fresh copy of the app in Docker with a freshly seeded database,
+- In CI all suites run against a fresh copy of the app in Docker with a freshly seeded database,
   so runs never see leftovers from previous runs or other people using the public demo.
 
 ## Test pyramid in this project
@@ -132,7 +132,7 @@ No `sleep`. The framework waits on things that actually signal readiness:
 
 ## Known trade-offs
 
-- API tests run against the public demo, which is shared and may change. They stay stable because they
-  assert rules and shapes, not exact catalogue contents. Pointing `API_URL` at the Docker instance
-  gives full isolation when needed.
+- By default (locally) the suites point at the public demo, which is shared: its data can change and its demo
+  accounts can get locked by other people's failed logins (HTTP 423). CI therefore runs everything against a
+  fresh Docker instance; locally, point `BASE_URL`/`API_URL` at Docker for the same isolation.
 - Only Chromium runs in CI for now: cross-browser runs are the next step.
