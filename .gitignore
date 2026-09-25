@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+
+# Test output
+test-results/
+allure-results/
+allure-report/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

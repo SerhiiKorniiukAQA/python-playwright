@@ -1,0 +1,9 @@
+pytest>=8.3
+pytest-playwright>=0.7,<1
+playwright>=1.55,<2
+pydantic>=2.9,<3
+allure-pytest>=2.13,<3
+pytest-rerunfailures>=15.0
+pytest-xdist>=3.6,<4
+Faker>=30.0
+ruff==0.15.11
