@@ -21,3 +21,13 @@ class ProductsApi(BaseApi):
 
     def get_brands(self) -> APIResponse:
         return self._send("GET", "/brands")
+
+    # Admin-only endpoints
+
+    def delete_product(self, product_id: str, token: str | None = None) -> APIResponse:
+        headers = self.auth_header(token) if token else {}
+        return self._send("DELETE", f"/products/{product_id}", headers=headers)
+
+    def delete_brand(self, brand_id: str, token: str | None = None) -> APIResponse:
+        headers = self.auth_header(token) if token else {}
+        return self._send("DELETE", f"/brands/{brand_id}", headers=headers)

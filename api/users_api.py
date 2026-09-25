@@ -15,3 +15,13 @@ class UsersApi(BaseApi):
     def me(self, token: str | None = None) -> APIResponse:
         headers = self.auth_header(token) if token else {}
         return self._send("GET", "/users/me", headers=headers)
+
+    # Admin-only endpoints
+
+    def get_users(self, token: str | None = None) -> APIResponse:
+        headers = self.auth_header(token) if token else {}
+        return self._send("GET", "/users", headers=headers)
+
+    def delete_user(self, user_id: str, token: str | None = None) -> APIResponse:
+        headers = self.auth_header(token) if token else {}
+        return self._send("DELETE", f"/users/{user_id}", headers=headers)

@@ -17,14 +17,14 @@ def test_login_with_valid_credentials(page: Page) -> None:
     home = HomePage(page).open()
     home.header.go_to_sign_in()
 
-    LoginPage(page).login(settings.customer_email, settings.customer_password)
+    LoginPage(page).login(settings.customer.email, settings.customer.password)
 
     account = AccountPage(page)
     with allure.step("Check that 'My account' page is opened"):
         expect(page).to_have_url(re.compile(r"/account$"))
         expect(account.page_title).to_have_text("My account")
-    with allure.step(f"Check that header shows user name '{settings.customer_full_name}'"):
-        expect(account.header.user_menu).to_contain_text(settings.customer_full_name)
+    with allure.step(f"Check that header shows user name '{settings.customer.full_name}'"):
+        expect(account.header.user_menu).to_contain_text(settings.customer.full_name)
 
 
 @allure.title("Wrong credentials show an error and keep the user on the login page")

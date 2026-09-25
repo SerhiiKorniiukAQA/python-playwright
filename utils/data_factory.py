@@ -6,6 +6,7 @@ on leftovers from a previous run on the shared public demo.
 
 import secrets
 import uuid
+from dataclasses import asdict, dataclass
 from datetime import date, timedelta
 from typing import Any
 
@@ -45,3 +46,55 @@ def new_user_payload(**overrides: Any) -> dict[str, Any]:
     }
     payload.update(overrides)
     return payload
+
+
+@dataclass(frozen=True)
+class Address:
+    street: str
+    house_number: str
+    city: str
+    state: str
+    country_code: str  # ISO code, as used by the country dropdown
+    postal_code: str
+
+    def __str__(self) -> str:
+        return f"{self.street} {self.house_number}, {self.postal_code} {self.city}, {self.country_code}"
+
+    def as_postcode_lookup(self) -> dict[str, str]:
+        """Response body of GET /postcode-lookup for this address."""
+        data = asdict(self)
+        data["country"] = data.pop("country_code")
+        data["postcode"] = data.pop("postal_code")
+        return data
+
+
+def new_address(**overrides: Any) -> Address:
+    values: dict[str, Any] = {
+        "street": fake.street_name()[:60],
+        "house_number": str(fake.random_int(min=1, max=200)),
+        "city": fake.city()[:40],
+        "state": fake.state()[:40],
+        "country_code": "UA",
+        "postal_code": fake.numerify("0####"),
+    }
+    values.update(overrides)
+    return Address(**values)
+
+
+def payment_details(method: str) -> dict[str, str]:
+    """Valid form data for each payment method (field name -> value)."""
+    next_year = date.today().year + 1
+    return {
+        "bank-transfer": {
+            "bank_name": "Test Bank",
+            "account_name": "Serhii Tester",
+            "account_number": fake.numerify("##########"),
+        },
+        "cash-on-delivery": {},
+        "credit-card": {
+            "credit_card_number": "4111-1111-1111-1111",
+            "expiration_date": f"12/{next_year}",
+            "cvv": "123",
+            "card_holder_name": "Serhii Tester",
+        },
+    }[method]

@@ -4,15 +4,15 @@ pytest-playwright already provides `playwright`, `browser`, `context` and
 `page`. Here we only configure them and add API fixtures on top.
 """
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from pathlib import Path
 
 import allure
 import pytest
-from playwright.sync_api import APIRequestContext, Playwright, expect
+from playwright.sync_api import APIRequestContext, BrowserContext, Page, Playwright, expect
 
-from api import CartsApi, ProductsApi, UsersApi
-from api.models import Token
+from api import CartsApi, InvoicesApi, PaymentApi, ProductsApi, UsersApi
+from api.auth import TokenProvider, browser_storage_state
 from config import settings
 from utils.allure_report import (
     attach_screenshot,
@@ -54,7 +54,8 @@ def _allure_labels(request: pytest.FixtureRequest) -> None:
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo) -> pytest.TestReport:
     """Attach the final state of the page to every UI test, passed or failed."""
     report = yield
-    page = getattr(item, "funcargs", {}).get("page")
+    pages = [v for v in getattr(item, "funcargs", {}).values() if isinstance(v, Page)]
+    page = pages[0] if pages else None
     if report.when == "call" and page is not None and not page.is_closed():
         title = "Screenshot on failure" if report.failed else "Final screenshot"
         try:
@@ -126,7 +127,45 @@ def carts_api(api_request: APIRequestContext) -> CartsApi:
 
 
 @pytest.fixture(scope="session")
-def customer_token(users_api: UsersApi) -> str:
-    response = users_api.login(settings.customer_email, settings.customer_password)
-    assert response.ok, f"Login of demo customer failed: {response.status} {response.text()}"
-    return Token.model_validate(response.json()).access_token
+def invoices_api(api_request: APIRequestContext) -> InvoicesApi:
+    return InvoicesApi(api_request)
+
+
+@pytest.fixture(scope="session")
+def payment_api(api_request: APIRequestContext) -> PaymentApi:
+    return PaymentApi(api_request)
+
+
+# ---------- Auth ----------
+
+
+@pytest.fixture(scope="session")
+def token_provider(users_api: UsersApi) -> TokenProvider:
+    return TokenProvider(users_api)
+
+
+@pytest.fixture
+def customer_token(token_provider: TokenProvider) -> str:
+    return token_provider.token_for(settings.customer)
+
+
+@pytest.fixture
+def customer2_token(token_provider: TokenProvider) -> str:
+    return token_provider.token_for(settings.customer2)
+
+
+@pytest.fixture
+def admin_token(token_provider: TokenProvider) -> str:
+    return token_provider.token_for(settings.admin)
+
+
+@pytest.fixture
+def customer_page(new_context: Callable[..., BrowserContext], customer_token: str) -> Page:
+    """A browser page where the demo customer is already logged in.
+
+    The token comes from the API and is put into localStorage before the app
+    loads, so the test skips the login form entirely. Tracing, screenshots and
+    context cleanup are still handled by pytest-playwright's `new_context`.
+    """
+    context = new_context(storage_state=browser_storage_state(settings.base_url, customer_token))
+    return context.new_page()

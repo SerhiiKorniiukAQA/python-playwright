@@ -20,34 +20,50 @@ product pages, cart, checkout, registration and a customer account, plus a docum
 | CI | GitHub Actions: lint → API + UI in parallel → report |
 | Code quality | ruff (lint + format) |
 
+## What is covered
+
+**72 tests**: 47 API, 21 UI, 4 E2E.
+
+| Area | API | UI / E2E |
+|---|---|---|
+| Catalog | list, pagination, sorting, search, 404, categories/brands | grid, search, sorting, no results |
+| Auth | login, `/users/me`, registration, password rules, duplicate email | login form, validation, login via API token |
+| Authorization | 401 vs 403 vs 404, admin-only endpoints, foreign invoices | redirects for anonymous users and non-admins |
+| Cart | create, add, merge quantities, limits, business rule (one Thor Hammer) | add to cart, quantities, line prices |
+| Checkout | payment validation for each method | full purchase for 3 payment methods + invoice verified via API |
+| Resilience | | UI under mocked 500/503 and edge-case data, postcode lookup success/error |
+
 ## Project structure
 
 ```
-api/                 API client: one wrapper per resource + pydantic response models
-config/settings.py   URLs and credentials, overridable with environment variables
+api/                 Endpoint clients (+ TokenProvider) and pydantic response models
+config/settings.py   URLs, users and timeouts, overridable with environment variables
 pages/               Page objects (+ components/ for shared parts like the header)
-utils/               Test data factory
-docker/              Docker Compose file to run the Toolshop app locally / in CI
+utils/               Test data factory, network mocks, Allure helpers
+docker/              Docker Compose + nginx config to run the Toolshop app locally / in CI
 tests/
-  conftest.py        Shared fixtures: browser config, API clients, auth token
-  api/               API tests: products, auth/registration, cart
-  ui/                UI tests: login, catalog (search/sort), cart
-  e2e/               Flows that prepare data via API and verify in the UI
+  conftest.py        Fixtures: API clients, tokens, logged-in browser page, report hooks
+  api/               API tests: products, auth, authorization, cart, payment
+  ui/                UI tests: login, catalog, cart, checkout address, access control, network mocking
+  e2e/               Checkout and registration flows across UI + API
 .github/workflows/   CI pipeline
 ```
 
 ## Design decisions
 
-- **Page Object Model.** Tests read as user scenarios; locators live in one place.
-- **Stable locators.** The app exposes `data-test` attributes, so `get_by_test_id()` is configured to use them.
-  No CSS/XPath chains tied to layout.
-- **No sleeps.** Waits rely on Playwright auto-waiting and on the loading state the app exposes
-  (`search_completed`, `sorting_completed`).
-- **Schema validation.** Every API response is parsed into a pydantic model, so a missing field or a wrong
-  type fails with a clear message.
-- **Independent tests.** Each test creates its own users and carts, so the suite can run in parallel
-  (`pytest-xdist`) on a shared public environment.
-- **API for setup, UI for checks.** E2E tests register users via the API (fast) and check the result in the browser.
+Short version below; the reasoning is in **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
+- **Layers:** tests → page objects / API clients → Playwright. Tests contain no selectors or URLs.
+- **Fixtures as dependency injection:** tests ask for `customer_page`, `admin_token`, `invoices_api`
+  and get ready objects.
+- **Login once, reuse everywhere:** UI tests get a logged-in browser through an API token in
+  `storage_state`; the login form itself is tested separately.
+- **AuthN vs AuthZ:** 401 / 403 / 404 are covered as distinct cases.
+- **Network mocking:** `page.route()` for server errors, edge-case data and external dependencies.
+- **Stable locators and no sleeps:** `data-test` attributes, web-first assertions, app state markers,
+  `expect_response`.
+- **Schema validation:** every API response is parsed into a pydantic model.
+- **Isolation:** unique data per test, parallel runs, a fresh Docker environment for UI in CI.
 
 ## Running locally
 

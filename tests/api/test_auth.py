@@ -12,7 +12,7 @@ pytestmark = [pytest.mark.api, allure.feature("Auth API")]
 @pytest.mark.smoke
 @allure.title("Customer can log in and receives a bearer token")
 def test_login_with_valid_credentials(users_api: UsersApi) -> None:
-    response = users_api.login(settings.customer_email, settings.customer_password)
+    response = users_api.login(settings.customer.email, settings.customer.password)
 
     assert response.status == 200
     token = Token.model_validate(response.json())
@@ -37,7 +37,7 @@ def test_get_current_user(users_api: UsersApi, customer_token: str) -> None:
 
     assert response.status == 200
     user = User.model_validate(response.json())
-    assert user.email == settings.customer_email
+    assert user.email == settings.customer.email
 
 
 @allure.title("/users/me without a token returns 401")
@@ -65,7 +65,7 @@ def test_register_new_user_and_login(users_api: UsersApi) -> None:
 
 @allure.title("Registration with an already used email returns 409 Conflict")
 def test_register_with_existing_email(users_api: UsersApi) -> None:
-    payload = new_user_payload(email=settings.customer_email)
+    payload = new_user_payload(email=settings.customer.email)
 
     response = users_api.register(payload)
 

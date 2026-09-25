@@ -69,3 +69,41 @@ class CartItem(ApiModel):
 class Cart(ApiModel):
     id: str
     cart_items: list[CartItem]
+
+
+class InvoiceProduct(ApiModel):
+    id: str
+    name: str
+    price: float
+
+
+class InvoiceLine(ApiModel):
+    product_id: str
+    quantity: int
+    unit_price: float
+    product: InvoiceProduct | None = None
+
+
+class Invoice(ApiModel):
+    id: str
+    user_id: str
+    invoice_number: str
+    total: float
+    billing_street: str | None = None
+    billing_city: str | None = None
+    billing_state: str | None = None
+    billing_country: str | None = None
+    billing_postal_code: str | None = None
+    invoicelines: list[InvoiceLine] = []
+
+
+class InvoicesPage(ApiModel):
+    current_page: int
+    total: int
+    data: list[Invoice]
+
+
+class UsersPage(ApiModel):
+    current_page: int
+    total: int
+    data: list[User]

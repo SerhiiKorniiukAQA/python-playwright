@@ -46,6 +46,9 @@ NOISY_FIXTURES = {
     "products_api",
     "users_api",
     "carts_api",
+    "invoices_api",
+    "payment_api",
+    "token_provider",
 }
 
 
